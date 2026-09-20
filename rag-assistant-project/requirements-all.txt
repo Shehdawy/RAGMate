@@ -1,0 +1,4 @@
+# Installs everything needed to run the whole project: pip install -r requirements-all.txt
+-r requirements-notebook.txt
+-r backend/requirements.txt
+-r frontend/requirements.txt
