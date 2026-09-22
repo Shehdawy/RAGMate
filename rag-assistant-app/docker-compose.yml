@@ -1,0 +1,41 @@
+# Local stack (everything on your machine, including the LLM):
+#   docker compose up --build
+#   docker compose exec ollama ollama pull llama3.2      # first time only
+# Then open http://localhost:8501
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    ports:
+      - "11434:11434"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: llama3.2
+      CORS_ORIGINS: http://localhost:8501
+      AUTO_INGEST: "true"          # build the index from data/raw on first start
+    volumes:
+      - vector_store:/app/data/vector_store
+    depends_on:
+      - ollama
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_BASE_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+
+volumes:
+  ollama_models:
+  vector_store:

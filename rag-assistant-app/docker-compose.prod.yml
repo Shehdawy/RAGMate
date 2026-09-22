@@ -1,0 +1,75 @@
+# Production stack: HTTPS reverse proxy (Caddy) + frontend + backend [+ local Ollama].
+# Only Caddy publishes ports; the backend is reachable only from inside the Docker network.
+#
+#   cp .env.example .env        # then edit it
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   # with a local model instead of a hosted API:
+#   docker compose -f docker-compose.prod.yml --profile ollama up -d --build
+#   docker compose -f docker-compose.prod.yml exec ollama ollama pull llama3.2
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-documind-frontend:local}
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://backend:8000
+      API_KEY: ${API_KEY:?Set API_KEY in .env}
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      READ_ONLY_DOCUMENTS: ${READ_ONLY_DOCUMENTS:-false}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    image: ${BACKEND_IMAGE:-documind-backend:local}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      ENABLE_DOCS: "false"
+      LOG_FORMAT: json
+      AUTO_INGEST: "true"
+      CORS_ORIGINS: https://${DOMAIN:-localhost}
+      API_KEY: ${API_KEY:?Set API_KEY in .env}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+    volumes:
+      - vector_store:/app/data/vector_store
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+
+volumes:
+  caddy_data:
+  caddy_config:
+  vector_store:
+  ollama_models:

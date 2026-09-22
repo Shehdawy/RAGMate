@@ -1,0 +1,19 @@
+{
+  "embedding_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "collection_name": "documents",
+  "chunk_size": 800,
+  "chunk_overlap": 100,
+  "similarity": "squared L2 on normalized embeddings (cosine = 1 - d/2)",
+  "num_chunks": 24,
+  "source_files": [
+    "01_supervised_learning.pdf",
+    "02_unsupervised_learning.pdf",
+    "03_model_evaluation.pdf",
+    "04_overfitting_and_regularization.pdf",
+    "05_neural_networks_basics.pdf",
+    "06_feature_engineering.pdf"
+  ],
+  "recommended_top_k": 4,
+  "recommended_min_similarity": 0.25,
+  "recommended_llm": "llama3.2"
+}
